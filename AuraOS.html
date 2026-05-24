@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aura OS</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    :root{
+      --bg:#0B1020;
+      --card:#121A2B;
+      --text:#EAF2FF;
+      --muted:#A9B6D3;
+      --good:#2EE59D;
+      --bad:#FF4D6D;
+      --accent1:#6C5CE7;
+      --accent2:#00D2FF;
+    }
+
+    body{
+      font-family:Segoe UI,sans-serif;
+      background:radial-gradient(circle at top,#1A2550,#0B1020 70%);
+      min-height:100vh;
+      color:var(--text);
+    }
+
+    .container{max-width:1100px;margin:auto;padding:20px}
+
+    .panel{
+      background:var(--card);
+      border-radius:20px;
+      padding:20px;
+      margin-top:15px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .title{font-size:2rem;font-weight:700}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-top:15px}
+
+    .card{
+      background:rgba(255,255,255,0.03);
+      border-radius:16px;
+      padding:15px;
+      border:1px solid rgba(255,255,255,0.06);
+    }
+
+    input,textarea{
+      width:100%;padding:10px;margin-top:8px;
+      border-radius:12px;
+      border:none;
+      background:rgba(0,0,0,0.25);
+      color:white;
+    }
+
+    button{
+      width:100%;padding:12px;margin-top:10px;
+      border:none;border-radius:12px;
+      background:linear-gradient(135deg,var(--accent1),var(--accent2));
+      color:white;font-weight:bold;
+      cursor:pointer;
+    }
+
+    .task{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:8px;
+      padding:10px;
+      border-radius:12px;
+      background:rgba(255,255,255,0.03);
+    }
+
+    .done{border-left:4px solid var(--good)}
+    .wrong{border-left:4px solid var(--bad)}
+
+    .tag{font-size:12px;color:var(--muted)}
+
+    .aiBox{
+      margin-top:10px;
+      padding:10px;
+      border-radius:12px;
+      background:rgba(0,0,0,0.2);
+      border:1px solid rgba(255,255,255,0.06);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="panel">
+    <div class="title">Aura OS</div>
+  </div>
+
+  <div class="panel">
+    <h3>المهام</h3>
+    <input id="taskInput" placeholder="اكتب مهمة" />
+    <button onclick="addTask()">إضافة</button>
+    <div id="tasks"></div>
+  </div>
+
+  <div class="panel">
+    <h3>مساعد الذكاء الاصطناعي</h3>
+    <button onclick="generateAdvice()">تحليل يومي</button>
+    <div class="aiBox" id="aiAdvice"></div>
+  </div>
+
+  <div class="panel">
+    <h3>جلسة المذاكرة</h3>
+    <input id="studyTime" type="number" placeholder="الدقائق" />
+    <button onclick="startStudy()">ابدأ</button>
+
+    <div style="height:10px;background:#1b2742;border-radius:10px;overflow:hidden;margin-top:10px">
+      <div id="fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent1),var(--accent2))"></div>
+    </div>
+
+    <div id="msg" style="margin-top:10px"></div>
+  </div>
+
+</div>
+
+<script>
+
+let tasks=[];
+let audio=new AudioContext();
+
+function speak(text){
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ar-SA";
+  u.rate=0.95;
+  speechSynthesis.speak(u);
+}
+
+function beep(f){
+  const o=audio.createOscillator();
+  const g=audio.createGain();
+  o.connect(g);g.connect(audio.destination);
+  o.frequency.value=f;
+  g.gain.value=0.03;
+  o.start();o.stop(audio.currentTime+0.1);
+}
+
+function addTask(){
+  const v=document.getElementById('taskInput').value;
+  if(!v)return;
+  tasks.push({text:v,status:"pending"});
+  render();
+  beep(400);
+}
+
+function mark(i,type){
+  tasks[i].status=type;
+  render();
+}
+
+function render(){
+  document.getElementById('tasks').innerHTML=tasks.map((t,i)=>`
+    <div class='task ${t.status=="done"?"done":t.status=="wrong"?"wrong":""}'>
+      <div>
+        ${t.text}
+        <div class='tag'>${t.status=="done"?"تمت":t.status=="wrong"?"لم تتم":"قيد التنفيذ"}</div>
+      </div>
+      <div>
+        <button onclick='mark(${i},"done")'>صح</button>
+        <button onclick='mark(${i},"wrong")'>خطأ</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function generateAdvice(){
+  let done=tasks.filter(t=>t.status=="done").length;
+  let wrong=tasks.filter(t=>t.status=="wrong").length;
+  let total=tasks.length;
+
+  let msg="";
+
+  if(total===0){
+    msg="ابدأ بمهمة واحدة صغيرة اليوم. البداية أهم خطوة.";
+  }
+  else if(done>wrong){
+    msg="أداؤك جيد، استمر لكن لا ترهق نفسك.";
+  }
+  else if(wrong>done){
+    msg="لا تضغط نفسك، ركّز على مهام أقل لكن بجودة أعلى.";
+  }
+  else{
+    msg="وازن بين الراحة والمذاكرة، أنت في منتصف الطريق.";
+  }
+
+  document.getElementById('aiAdvice').innerText=msg;
+  speak(msg);
+}
+
+function startStudy(){
+  let mins=parseInt(document.getElementById('studyTime').value)||25;
+  let total=mins*60;
+  let cur=0;
+
+  document.getElementById('msg').innerText="ابدأ التركيز";
+
+  let i=setInterval(()=>{
+    cur++;
+    let p=(cur/total)*100;
+    document.getElementById('fill').style.width=p+'%';
+
+    if(cur%10===0) beep(300);
+
+    if(cur>=total){
+      clearInterval(i);
+      finish();
+    }
+  },1000);
+}
+
+function finish(){
+  let msg="أحسنت، جلستك انتهت بنجاح. استمر بهذا المستوى.";
+  document.getElementById('msg').innerText=msg;
+  speak(msg);
+}
+
+</script>
+
+</body>
+</html>
